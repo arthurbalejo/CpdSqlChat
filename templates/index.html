@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integra</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .chat-container {
+            width: 500px;
+            max-width: 100%;
+            background-color: white;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .chat-header {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin: 10px 0;
+            max-width: 80%;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: #d1e7ff;
+        }
+
+        .message.ia {
+            align-self: flex-start;
+            background-color: #e8e8e8;
+        }
+
+        .chat-input {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="text"] {
+            width: 85%;
+            height: 40px;
+            font-size: 16px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 13%;
+            background-color: rgb(60, 90, 167); /* Azul em RGB */
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: rgb(46, 68, 128); /* Um azul mais escuro em RGB para o hover */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">Faça uma pergunta sobre os cursos</div>
+
+        <div class="chat-box" id="chat-box">
+            <!-- As mensagens aparecerão aqui -->
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="user-prompt" placeholder="Digite sua pergunta" />
+            <button id="send-btn">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('send-btn').addEventListener('click', async function () {
+            const prompt = document.getElementById('user-prompt').value;
+
+            if (!prompt) {
+                alert('Por favor, digite uma pergunta.');
+                return;
+            }
+
+            // Adicionar mensagem do usuário
+            const userMessage = document.createElement('div');
+            userMessage.classList.add('message', 'user');
+            userMessage.textContent = prompt;
+            document.getElementById('chat-box').appendChild(userMessage);
+
+            // Limpar o campo de input
+            document.getElementById('user-prompt').value = '';
+
+            // Adicionar o indicador de "processando" (três pontinhos)
+            let loadingMessage = document.createElement('div');
+            loadingMessage.classList.add('message', 'ia');
+            loadingMessage.textContent = 'Integra: ...';
+            document.getElementById('chat-box').appendChild(loadingMessage);
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+
+            try {
+                // Chamada ao backend
+                const response = await fetch('/api/pergunta', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ pergunta: prompt })
+                });
+
+                const data = await response.json();
+
+                // Atualizar mensagem com a resposta
+                if (data.resposta) {
+                    const respostaComQuebras = data.resposta.replace(/\n/g, '<br>');
+					loadingMessage.innerHTML = `Integra: ${respostaComQuebras}`;
+                } else if (data.erro) {
+                    loadingMessage.textContent = `Erro: ${data.erro}`;
+                } else {
+                    loadingMessage.textContent = "Integra: Não foi possível obter uma resposta.";
+                }
+            } catch (error) {
+                loadingMessage.textContent = "Erro: Não foi possível conectar ao servidor.";
+            }
+
+            // Scroll automático para a nova mensagem
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+        });
+    </script>
+
+</body>
+</html>

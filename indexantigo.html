@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IA projeto </title>
+</head>
+<style>
+    /* Estilo para o campo de entrada */
+    input[type="text"] {
+        width: 600px; /* Aumenta a largura do campo de entrada */
+        height: 40px; /* Aumenta a altura do campo de entrada */
+        font-size: 18px; /* Tamanho do texto dentro do campo de entrada */
+        padding: 10px; /* Espaçamento interno no campo de entrada */
+        border-radius: 5px; /* Arredonda os cantos do campo de entrada */
+        border: 2px solid #ccc; /* Cor e estilo da borda */
+    }
+</style>
+
+
+<body>
+
+    
+
+    <h1>Faça uma Pergunta sobre os Dados</h1>
+
+    <label for="user-prompt" style="font-size: 22px;">Pergunta:</label>
+
+    <input type="text" id="user-prompt" placeholder="Digite sua pergunta" />
+
+    <button id="send-btn">Enviar</button>
+
+    <h2>Resposta:</h2>
+    <pre id="response" style="font-size: 22px;"></pre>
+
+    <script>
+        document.getElementById('send-btn').addEventListener('click', async function() {
+            const prompt = document.getElementById('user-prompt').value;
+            
+            if (!prompt) {
+                alert('Por favor, digite uma pergunta.');
+                return;
+            }
+
+            // Enviar pergunta para o backend
+            const response = await fetch('/api/pergunta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ pergunta: prompt })
+            });
+
+            const data = await response.json();
+
+            // Exibir resposta ou erro
+            if (data.resposta) {
+                document.getElementById('response').textContent = data.resposta;
+            } else if (data.erro) {
+                document.getElementById('response').textContent = 'Erro: ' + data.erro;
+            }
+        });
+    </script>
+
+</body>
+</html>
