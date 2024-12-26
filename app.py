@@ -62,10 +62,8 @@ Regras para geração da consulta:
 - Não inclua múltiplas consultas SQL na mesma resposta.
 - Se existir mais de um curso, escrever o SQL utilizando a cláusula GROUP BY pelo nome do curso.
 
-
-
 Pergunta do usuário: \"{user_question}\"
--Ao responder a pergunta já responda de forma legível e clara mostrando as colunas que utilizou na QUERY para o usuario entender a resposta.
+
 """
     try:
         sql_query = llm.generate([prompt])
@@ -113,17 +111,25 @@ def responder_pergunta():
         #sô para ficar copiaddo Mostrar somente o total de calouros de cada curso em 2023
 
         if resposta:
+            #print('************************')
+            #print(sql_query)
+            #print('************************')
+            #print(pergunta)
+            #print('************************')
+            #print(resposta)
+            #print('************************')
             prompt_resposta = f"""
-            Você é um assistente especializado em banco de dados.
+            Voce é um chat assistente que recebe instruções para realizar uma tarefa..
             Instruções:
             1. A consulta SQL ({sql_query}) foi realizada com base na pergunta do usuário ({pergunta}).
             2. A resposta obtida ({resposta}) contém os dados resultantes da query.
-            Tarefas:
-            - Responda à pergunta do usuário com base nos dados fornecidos.
-            - Inclua todos os dados na resposta.
-            - Se houver mais de 10 registros, apresente os dados em formato de tópicos numerados.
-            Forneça uma explicação clara e objetiva.
+            3. Inclua todos os dados da resposta obtida na resposta.
+            4. Se houver mais de 10 registros, apresente os dados em formato de tópicos numerados.
+            Tarefa:
+            - Responda à pergunta do usuário com base na resposta obtida.
+            - Forneça uma resposta clara e objetiva.
             """
+
             try:
                 #print(resposta)
                 resposta_tratada = llm.generate([prompt_resposta])
