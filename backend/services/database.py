@@ -6,7 +6,7 @@ load_dotenv()
 
 os.environ['PATH'] += os.pathsep + 'clidriver/bin'
 
-def get_engine():
+def _create_engine():
     user = os.getenv("DB_USER")
     pwd  = os.getenv("DB_PASS")
     host = os.getenv("DB_HOST")
@@ -15,3 +15,6 @@ def get_engine():
 
     dsn = f"ibm_db_sa://{user}:{pwd}@{host}:{port}/{name}"
     return create_engine(dsn)
+
+# Engine criado uma única vez ao importar o módulo
+engine = _create_engine()
