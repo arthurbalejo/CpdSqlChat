@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: beeai_postgres
+    environment:
+      POSTGRES_DB: beeai
+      POSTGRES_USER: beeai_user
+      POSTGRES_PASSWORD: suasenha123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: beeai_backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    command: uvicorn main:app --host 0.0.0.0 --port 5000 --reload
+    depends_on:
+      - postgres
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: beeai_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:

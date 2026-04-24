@@ -89,6 +89,9 @@ Regras:
   AND TOTAL_EVASOES = (SELECT MAX(TOTAL_EVASOES) FROM BEEIA.Cursos_Totais_IA WHERE SIGLA_CENTRO = '<CENTRO_DA_PERGUNTA>')
 - Substitua <CENTRO_DA_PERGUNTA> pelo centro mencionado pelo usuário
 - Se não houver centro na pergunta, remova o filtro de SIGLA_CENTRO
+- Se a pergunta for sobre QUAIS cursos existem (listagem), use DISTINCT e NÃO inclua ANO e SEMESTRE
+- Só inclua ANO e SEMESTRE quando a pergunta for sobre evasão, percentuais ou dados temporais
+- Exemplo para listagem: SELECT DISTINCT SIGLA_CENTRO, NOME_CURSO FROM BEEIA.Cursos_Totais_IA ORDER BY SIGLA_CENTRO, NOME_CURSO
 - Use AVG para médias, MAX/MIN para maior/menor
 - Nunca retorne múltiplas queries
 - PERIODO é sinônimo de SEMESTRE
@@ -103,28 +106,34 @@ Pergunta reformulada: "{pergunta_reformulada}"
 
 def formatar_resposta(pergunta: str, sql: str, dados: str) -> str:
     prompt = f"""
-Você é um assistente que responde perguntas sobre evasão universitária na UFSM.
+        Você é um assistente que responde perguntas sobre evasão universitária na UFSM.
 
-Contexto:
-- A pergunta do usuário foi: "{pergunta}"
-- Os dados retornados foram: 
-{dados}
+        Contexto:
+        - A pergunta do usuário foi: "{pergunta}"
+        - Os dados retornados foram: 
+        {dados}
 
-Regras:
-- Responda de forma clara e objetiva em português
-- SEMPRE mencione o ano e semestre de cada registro na resposta
-- Formato para cada item: "No X semestre de ANO, houve Y evasões"
-- Inclua TODOS os dados retornados na resposta
-- Se houver mais de 10 registros, use tópicos numerados
-- Não mencione SQL na resposta
-- Se não houver dados, diga que não foram encontrados resultados
-"""
-    return call_llm(prompt)
+        Regras:
+        - Responda de forma clara e objetiva em português
+        - SEMPRE mencione o ano e semestre de cada registro na resposta
+        - Formato para cada item: "No X semestre de ANO, houve Y evasões"
+        - Inclua TODOS os dados retornados na resposta
+        - Se houver mais de 10 registros, use tópicos numerados
+        - Não mencione SQL na resposta
+        - Se não houver dados, diga que não foram encontrados resultados
+        """
+    model = "gpt-3.5-turbo-16k" if len(dados) > 2000 else "gpt-4"
+    return call_llm(prompt, model=model)
 
-
-def call_llm(prompt: str) -> str:
+def call_llm(prompt: str, model: str = "gpt-4") -> str:
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
+        client = ChatOpenAI(
+            temperature=0,
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
+            max_tokens=2000,
+            model=model
+        )
+        response = client.invoke([HumanMessage(content=prompt)])
         return response.content.strip()
     except Exception as e:
         print(f"Erro ao chamar LLM: {e}")

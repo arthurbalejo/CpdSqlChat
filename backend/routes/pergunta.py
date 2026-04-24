@@ -47,8 +47,16 @@ def responder_pergunta(body: PerguntaRequest):
     if not rows:
         return {"pergunta": pergunta, "resposta": "Nenhum resultado encontrado.", "sql": sql_query}
 
+    # Formatar dados brutos
     formatted = [", ".join(map(str, r)) for r in rows]
-    dados_brutos = "Resultados:\n" + "\n".join(formatted)
+
+    # Limita a 30 linhas para não estourar o contexto do GPT
+    if len(formatted) > 30:
+        dados_brutos = "Resultados (primeiros 30 de {}):\n".format(len(formatted))
+        dados_brutos += "\n".join(formatted[:30])
+        dados_brutos += f"\n... e mais {len(formatted) - 30} registros."
+    else:
+        dados_brutos = "Resultados:\n" + "\n".join(formatted)
 
     resposta_final = formatar_resposta(pergunta, sql_query, dados_brutos)
     return {"pergunta": pergunta, "resposta": resposta_final, "sql": sql_query}
