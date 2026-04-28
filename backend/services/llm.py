@@ -70,6 +70,19 @@ def gerar_sql(pergunta: str, historico: list = None) -> str:
             + "\n\n"
         )
 
+    # Regra de filtro de curso: igualdade exata quando identificado, LIKE como fallback
+    if curso:
+        regra_curso = (
+            f"- FILTRO DE CURSO OBRIGATÓRIO: o curso foi identificado com precisão como '{curso}'. "
+            f"Use SEMPRE igualdade exata: LOWER(NOME_CURSO) = LOWER('{curso}'). "
+            f"NUNCA use LIKE para esse curso — LIKE retornaria cursos com nomes parecidos e misturaria dados."
+        )
+    else:
+        regra_curso = (
+            "- FILTRO DE CURSO: o curso não foi identificado com precisão. "
+            "Use LIKE com % dos dois lados: LOWER(NOME_CURSO) LIKE '%termo%'"
+        )
+
     prompt = f"""{contexto_historico}
 Você é um assistente de banco de dados. Com base na pergunta do usuário, gere apenas **uma única consulta SQL** correta e sem erros.
 
@@ -93,10 +106,10 @@ Colunas:
 Regras:
 - Retorne APENAS o SQL, sem explicações, sem markdown, sem blocos de código
 - Sempre inclua as colunas ANO e SEMESTRE no SELECT para que a resposta seja completa
-- Sempre use LIKE com % dos dois lados: LOWER(NOME_CURSO) LIKE '%termo%'
-- Para perguntas sobre maior/menor valor, use subconsulta no lugar de ORDER BY + LIMIT, exemplo:
-  SELECT NOME_CURSO, TOTAL_EVASOES FROM BEEIA.Cursos_Totais_IA 
-  WHERE SIGLA_CENTRO = '<CENTRO_DA_PERGUNTA>' 
+{regra_curso}
+- Para perguntas sobre maior/menor valor, use subconsulta no lugar de ORDER BY + FETCH FIRST, exemplo:
+  SELECT NOME_CURSO, TOTAL_EVASOES FROM BEEIA.Cursos_Totais_IA
+  WHERE SIGLA_CENTRO = '<CENTRO_DA_PERGUNTA>'
   AND TOTAL_EVASOES = (SELECT MAX(TOTAL_EVASOES) FROM BEEIA.Cursos_Totais_IA WHERE SIGLA_CENTRO = '<CENTRO_DA_PERGUNTA>')
 - Substitua <CENTRO_DA_PERGUNTA> pelo centro mencionado pelo usuário
 - Se não houver centro na pergunta, remova o filtro de SIGLA_CENTRO
@@ -106,7 +119,7 @@ Regras:
 - Use AVG para médias, MAX/MIN para maior/menor
 - Nunca retorne múltiplas queries
 - PERIODO é sinônimo de SEMESTRE
-{f"- O curso identificado na pergunta é: '{curso}', use ele no LIKE" if curso else ""}
+- IBM DB2 não suporta LIMIT: para limitar linhas use FETCH FIRST X ROWS ONLY
 
 Pergunta original: "{pergunta}"
 Pergunta reformulada: "{pergunta_reformulada}"
@@ -120,7 +133,7 @@ def formatar_resposta(pergunta: str, sql: str, dados: str) -> str:
 
         Contexto:
         - A pergunta do usuário foi: "{pergunta}"
-        - Os dados retornados foram: 
+        - Os dados retornados foram:
         {dados}
 
         Regras:
@@ -131,6 +144,9 @@ def formatar_resposta(pergunta: str, sql: str, dados: str) -> str:
         - Se houver mais de 10 registros, use tópicos numerados
         - Não mencione SQL na resposta
         - Se não houver dados, diga que não foram encontrados resultados
+        - IMPORTANTE: se os dados contiverem mais de um curso diferente no campo NOME_CURSO,
+          agrupe os registros por curso e apresente cada curso em uma seção separada com
+          seu nome como título. Nunca misture dados de cursos diferentes no mesmo parágrafo.
         """
     model = "gpt-3.5-turbo-16k" if len(dados) > 2000 else "gpt-4"
     return call_llm(prompt, model=model)
