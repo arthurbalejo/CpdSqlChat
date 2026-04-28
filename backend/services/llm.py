@@ -51,15 +51,26 @@ Retorne APENAS um JSON válido sem explicações, sem markdown, sem blocos de c�
         }
 
 
-def gerar_sql(pergunta: str) -> str:
-    # Primeiro interpreta a pergunta
+def gerar_sql(pergunta: str, historico: list = None) -> str:
     interpretacao = interpretar_pergunta(pergunta)
     pergunta_reformulada = interpretacao.get("pergunta_reformulada", pergunta)
     curso = interpretacao.get("curso")
 
-    print(f"Interpretação: {interpretacao}")  # debug no terminal
+    print(f"Interpretação: {interpretacao}")
 
-    prompt = f"""
+    contexto_historico = ""
+    if historico:
+        linhas = [
+            f"[{'Usuário' if m['role'] == 'user' else 'Assistente'}]: {m['conteudo']}"
+            for m in historico
+        ]
+        contexto_historico = (
+            "Histórico da conversa (use para interpretar referências como 'o mesmo', 'esse curso', 'e em 2022?'):\n"
+            + "\n".join(linhas)
+            + "\n\n"
+        )
+
+    prompt = f"""{contexto_historico}
 Você é um assistente de banco de dados. Com base na pergunta do usuário, gere apenas **uma única consulta SQL** correta e sem erros.
 
 Tabela: BEEIA.Cursos_Totais_IA

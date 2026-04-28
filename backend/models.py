@@ -16,6 +16,7 @@ class Usuario(Base):
     criado_em       = Column(DateTime, default=datetime.utcnow)
 
     conversas       = relationship("Conversa", back_populates="usuario")
+    chats           = relationship("Chat", back_populates="usuario")
 
 
 class Conversa(Base):
@@ -40,3 +41,32 @@ class TokenRecuperacao(Base):
     usado       = Column(Boolean, default=False)
     expira_em   = Column(DateTime, nullable=False)
     criado_em   = Column(DateTime, default=datetime.utcnow)
+
+
+class Chat(Base):
+    __tablename__ = "chats"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    usuario_id  = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    titulo      = Column(String(200), nullable=False, default="Novo Chat")
+    criado_em   = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.utcnow)
+
+    usuario     = relationship("Usuario", back_populates="chats")
+    mensagens   = relationship(
+        "Mensagem", back_populates="chat",
+        cascade="all, delete-orphan",
+        order_by="Mensagem.criado_em"
+    )
+
+
+class Mensagem(Base):
+    __tablename__ = "mensagens"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    chat_id     = Column(Integer, ForeignKey("chats.id"), nullable=False)
+    role        = Column(String(20), nullable=False)  # "user" ou "assistant"
+    conteudo    = Column(Text, nullable=False)
+    criado_em   = Column(DateTime, default=datetime.utcnow)
+
+    chat        = relationship("Chat", back_populates="mensagens")

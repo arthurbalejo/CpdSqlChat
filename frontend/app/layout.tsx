@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BEE IA — Assistente de Evasão UFSM",
+  title: "AcademIA — Assistente de Evasão UFSM",
   description: "Assistente inteligente para análise de evasão universitária na UFSM",
 };
 
@@ -30,6 +30,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        {/* Script servidor: aplica "dark" antes da hidratação, sem warning do React 19 */}
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}`,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -13,14 +13,14 @@ async def enviar_email_recuperacao(destinatario: str, token: str):
     link = f"http://localhost:3000/resetar-senha?token={token}"
 
     mensagem = MIMEMultipart("alternative")
-    mensagem["Subject"] = "BEE IA — Recuperação de senha"
+    mensagem["Subject"] = "AcademIA — Recuperação de senha"
     mensagem["From"] = MAIL_EMAIL
     mensagem["To"] = destinatario
 
     html = f"""
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
       <div style="background-color: #1a2d4a; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 20px;">BEE IA</h1>
+        <h1 style="color: white; margin: 0; font-size: 20px;">AcademIA</h1>
         <p style="color: rgba(255,255,255,0.7); margin: 4px 0 0; font-size: 13px;">
           Assistente de Evasão — UFSM
         </p>

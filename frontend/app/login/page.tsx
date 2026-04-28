@@ -46,7 +46,7 @@ export default function Login() {
               <Bot className="size-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-base leading-tight">BEE IA</h1>
+              <h1 className="font-semibold text-base leading-tight">AcademIA</h1>
               <p className="text-xs text-white/70 leading-tight">
                 Assistente de Evasão — UFSM
               </p>
