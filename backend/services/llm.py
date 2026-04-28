@@ -95,7 +95,6 @@ Regras:
 - Use AVG para médias, MAX/MIN para maior/menor
 - Nunca retorne múltiplas queries
 - PERIODO é sinônimo de SEMESTRE
-- Se o SELECT tiver mais de uma coluna sem agregação, inclua todas no GROUP BY
 {f"- O curso identificado na pergunta é: '{curso}', use ele no LIKE" if curso else ""}
 
 Pergunta original: "{pergunta}"
