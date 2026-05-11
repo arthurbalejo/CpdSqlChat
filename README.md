@@ -1,287 +1,164 @@
 # AcademIA — Assistente de Evasão UFSM
 
-Sistema de perguntas e respostas em linguagem natural sobre dados de evasão universitária da UFSM. Permite que gestores, coordenadores e pesquisadores consultem o banco institucional sem precisar escrever SQL.
+O **AcademIA** é um assistente inteligente projetado para facilitar a consulta de dados de evasão universitária da UFSM. Utilizando processamento de linguagem natural (LLM), o sistema traduz perguntas em português para consultas SQL complexas, permitindo que gestores e coordenadores acessem informações institucionais sem a necessidade de conhecimento técnico em banco de dados.
 
 ---
 
-## Motivação
+## 🚀 Motivação
 
-O CPD da UFSM mantém uma base de dados com informações de evasão (desistência, abandono, trancamento) por curso, semestre e centro. Consultar esses dados exige conhecimento de SQL e acesso direto ao banco — barreiras que limitam o uso por quem mais precisa dos dados.
+O Centro de Processamento de Dados (CPD) da UFSM mantém uma base de dados robusta com informações de evasão (desistência, abandono, trancamento). No entanto, o acesso a esses dados é restrito a quem domina SQL. 
 
-A proposta do projeto é permitir que qualquer pessoa faça perguntas em português natural — como _"Qual curso teve mais evasões em 2023?"_ ou _"Compare a evasão de Ciência da Computação nos últimos dois anos"_ — e receba respostas claras, mantendo o histórico da conversa para perguntas de acompanhamento.
+O AcademIA remove essa barreira, permitindo consultas como:
+- *"Qual curso teve mais evasões no centro CCNE em 2023?"*
+- *"Compare a evasão de Ciência da Computação nos últimos dois anos"*
+- *"Qual o percentual de acerto do modelo para o curso de Medicina?"*
 
 ---
 
-## Arquitetura
+## 🏗️ Arquitetura do Sistema
 
+O projeto utiliza uma arquitetura moderna baseada em microserviços e uma pipeline de LLM em três etapas.
+
+### Fluxo de Dados
+```mermaid
+graph TD
+    A[Usuário/Browser] -->|Pergunta| B[Frontend - Next.js 16]
+    B -->|POST /api/pergunta| C[Backend - FastAPI]
+    
+    subgraph "Backend - Orquestração LLM (GPT-4)"
+        C --> D[1. Interpretação & Filtros]
+        D --> E[2. Geração de SQL]
+        E --> F[3. Formatação de Resposta]
+    end
+    
+    E -->|Query SQL| G[(IBM DB2 - Dados UFSM)]
+    G -->|Dados Brutos| F
+    
+    C <--> H[(PostgreSQL - App Data)]
+    H --- I(Usuários, Chats, Histórico)
 ```
-Usuário (browser)
-  │  pergunta em português
-  ▼
-Frontend (Next.js 16)
-  │  POST /api/pergunta  { pergunta, chat_id }
-  ▼
-Backend (FastAPI)
-  │
-  ├─► PostgreSQL — usuários, chats e histórico de mensagens
-  │
-  ├─► LLM (GPT-4): interpreta a pergunta + histórico → extrai filtros
-  ├─► LLM (GPT-4): gera SQL com base nos filtros e no schema
-  ├─► IBM DB2 (UFSM): executa a query
-  └─► LLM (GPT-4 / GPT-3.5): formata o resultado → resposta em português
-  │
-  ▼
-Frontend exibe resposta e salva no histórico do chat
-```
+
+### Pipeline de Inteligência (Sem Fine-Tuning)
+1.  **Interpretação:** O GPT-4 extrai filtros (ano, semestre, curso) e normaliza nomes de cursos usando uma lista oficial de ~100 cursos.
+2.  **Geração de SQL:** Com base nos filtros e no schema da tabela `BEEIA.Cursos_Totais_IA`, gera a query específica para o dialeto IBM DB2, mantendo o contexto do histórico da conversa.
+3.  **Formatação:** O resultado bruto do banco é transformado em uma resposta humanizada e clara em português.
 
 ---
 
-## Funcionalidades
+## ✨ Funcionalidades Principais
 
-- **Perguntas em linguagem natural** sobre a tabela `BEEIA.Cursos_Totais_IA` do IBM DB2
-- **Histórico de conversas** — cada chat mantém contexto entre perguntas
-- **Múltiplos chats** — crie, renomeie e delete conversas independentes
-- **Autenticação completa** — cadastro, login JWT, recuperação de senha por e-mail
-- **Tema claro/escuro** — persistido no localStorage
-- **Interface responsiva** — sidebar colapsável no mobile
+- **💬 Conversa Contextual:** O sistema mantém o histórico de cada chat, permitindo perguntas de acompanhamento ("e no ano anterior?").
+- **🔍 Autocomplete Inteligente:** Sugestão de cursos em tempo real na barra de busca.
+- **🏷️ Titulação Automática:** O sistema gera títulos para os chats baseados na primeira pergunta do usuário.
+- **🔐 Autenticação Completa:** Sistema de login, registro, JWT e recuperação de senha via e-mail.
+- **🌗 Dark Mode Nativo:** Interface moderna com suporte a temas, persistida no navegador.
+- **📱 Responsividade:** UI otimizada para desktop e mobile com sidebar colapsável.
 
 ---
 
-## Estrutura do Projeto
+## 🛠️ Tecnologias
 
-```
+### Frontend
+- **Framework:** [Next.js 16.2.4](https://nextjs.org/) (App Router)
+- **Biblioteca UI:** [React 19](https://react.dev/) + [Shadcn/ui](https://ui.shadcn.com/)
+- **Estilização:** [Tailwind CSS v4](https://tailwindcss.com/)
+- **Ícones:** Lucide React
+- **Gerenciamento de Estado:** React Hooks + Cookies (js-cookie)
+
+### Backend
+- **Linguagem:** Python 3.12
+- **Framework:** [FastAPI](https://fastapi.tiangolo.com/)
+- **ORM:** SQLAlchemy 2.0
+- **IA/LLM:** OpenAI GPT-4 via [LangChain](https://www.langchain.com/)
+- **Segurança:** JWT (python-jose), Bcrypt (passlib)
+
+### Bancos de Dados
+- **Aplicação:** PostgreSQL 16 (Usuários, Chats, Mensagens)
+- **Institucional:** IBM DB2 (Tabela de Evasão via `ibm_db_sa`)
+
+---
+
+## 📂 Estrutura do Projeto
+
+```text
 CpdSqlChat/
-├── docker-compose.yml         # Sobe Postgres + backend + frontend
-│
-├── backend/
-│   ├── main.py                # Entrypoint FastAPI, registro de routers
-│   ├── models.py              # Modelos SQLAlchemy (Usuario, Chat, Mensagem, …)
-│   ├── constants.py           # Lista dos 43 cursos da UFSM
-│   ├── requirements.txt
-│   ├── routes/
-│   │   ├── auth.py            # /auth/* — login, registro, recuperação de senha
-│   │   ├── chat.py            # /api/chat* — CRUD de chats
-│   │   ├── pergunta.py        # /api/pergunta — processamento da pergunta
-│   │   └── autocomplete.py    # /api/autocomplete — sugestão de cursos
-│   └── services/
-│       ├── database.py        # Conexão IBM DB2 via SQLAlchemy (ibm_db_sa)
-│       ├── database_pg.py     # Conexão PostgreSQL + criação das tabelas
-│       ├── llm.py             # Pipeline GPT-4: interpreta → SQL → formata
-│       ├── auth.py            # JWT, hash de senha, token de recuperação
-│       └── email.py           # Envio de e-mail para recuperação de senha
-│
-├── frontend/
-│   ├── app/
-│   │   ├── chat/page.tsx      # Interface principal com sidebar de chats
-│   │   ├── login/             # Página de login
-│   │   ├── register/          # Página de cadastro
-│   │   ├── esqueci-senha/     # Solicitação de recuperação de senha
-│   │   ├── resetar-senha/     # Redefinição via token
-│   │   ├── layout.tsx         # Layout raiz (fonte, tema inicial)
-│   │   ├── providers.tsx      # Contexto de tema + TooltipProvider
-│   │   └── globals.css        # Tailwind v4 + paleta navy/orange
-│   ├── lib/
-│   │   └── api.ts             # Funções fetch para todos os endpoints
-│   └── components/ui/         # Componentes shadcn/ui
-│
-└── start.sh                   # Sobe back e front localmente (sem Docker)
+├── backend/            # API FastAPI e Lógica de LLM
+│   ├── routes/         # Endpoints (Auth, Chat, Pergunta, Autocomplete)
+│   ├── services/       # Motores de DB, LLM e Email
+│   ├── clidriver/      # Driver binário para conexão IBM DB2
+│   └── models.py       # Definições das tabelas do PostgreSQL
+├── frontend/           # Interface Next.js 16
+│   ├── app/            # Páginas e Rotas (Chat, Auth)
+│   ├── components/ui/  # Componentes reutilizáveis Shadcn
+│   ├── lib/            # Cliente de API e utilitários
+│   └── globals.css     # Configurações de tema e Tailwind v4
+└── docker-compose.yml  # Orquestração de containers (DBs + App)
 ```
 
 ---
 
-## Tecnologias
+## ⚙️ Configuração e Instalação
 
-| Camada      | Tecnologia                                                      |
-|-------------|-----------------------------------------------------------------|
-| Frontend    | Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn/ui   |
-| Backend     | Python 3.12, FastAPI, SQLAlchemy, Uvicorn                       |
-| LLM         | OpenAI GPT-4 via LangChain                                      |
-| Banco UFSM  | IBM DB2 via `ibm_db_sa`                                         |
-| Banco App   | PostgreSQL 16 (usuários, chats, mensagens)                      |
-| Auth        | JWT (`python-jose`), bcrypt, recuperação via e-mail             |
-| Deploy      | Docker Compose                                                  |
-
----
-
-## Pré-requisitos
-
-- Python 3.12+
-- Node.js 18+
-- Docker e Docker Compose (para subir via container)
-- Acesso ao banco IBM DB2 da UFSM (rede interna ou VPN)
+### Pré-requisitos
+- Docker & Docker Compose
 - Chave de API da OpenAI
+- Acesso à rede/VPN da UFSM (para o IBM DB2)
 
----
-
-## Configuração
-
-### Variáveis de ambiente — `backend/.env`
+### 1. Variáveis de Ambiente
+Crie um arquivo `backend/.env` seguindo o modelo:
 
 ```env
-# OpenAI
+# IA
 OPENAI_API_KEY=sk-...
 
-# IBM DB2 (dados UFSM)
-DB_HOST=<host do DB2>
+# IBM DB2 (UFSM)
+DB_HOST=...
 DB_PORT=50000
 DB_NAME=BEE
-DB_USER=<usuario>
-DB_PASS=<senha>
+DB_USER=...
+DB_PASS=...
 
-# PostgreSQL (dados da aplicação)
+# PostgreSQL (App)
 DATABASE_URL=postgresql://beeai_user:suasenha123@localhost:5432/beeai
 
-# JWT
-SECRET_KEY=<segredo_longo_e_aleatorio>
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-
-# E-mail (recuperação de senha)
-EMAIL_HOST=smtp.exemplo.com
-EMAIL_PORT=587
-EMAIL_USER=<email>
-EMAIL_PASS=<senha>
+# JWT & Email
+SECRET_KEY=sua_chave_secreta_aqui
+MAIL_EMAIL=seu-email@gmail.com
+MAIL_SENHA=sua-app-password
 ```
 
-> O IBM DB2 CLI driver está incluído em `backend/clidriver/`. O pacote `ibm_db` usa esse driver automaticamente.
-
----
-
-## Executando com Docker
-
+### 2. Executando com Docker (Recomendado)
 ```bash
-# Sobe Postgres + backend + frontend
 docker-compose up --build
 ```
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:5000`
 
-| Serviço   | URL                      |
-|-----------|--------------------------|
-| Frontend  | http://localhost:3000    |
-| Backend   | http://localhost:5000    |
-| Postgres  | localhost:5432           |
-
----
-
-## Executando localmente
-
-### 1. Postgres (via Docker)
-
-```bash
-docker-compose up postgres -d
-```
-
-### 2. Backend
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate      # Linux/macOS
-# venv\Scripts\activate       # Windows
-
-pip install -r requirements.txt
-uvicorn main:app --reload --port 5000
-```
-
-### 3. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Tudo de uma vez (sem Docker)
-
-```bash
-./start.sh
-```
+### 3. Execução Local (Manual)
+Caso prefira não usar Docker para a aplicação:
+1. Suba o banco local: `docker-compose up postgres -d`
+2. Backend:
+   ```bash
+   cd backend && python -m venv venv && source venv/bin/activate
+   pip install -r requirements.txt
+   uvicorn main:app --reload --port 5000
+   ```
+3. Frontend:
+   ```bash
+   cd frontend && npm install && npm run dev
+   ```
+Ou utilize o script auxiliar: `./start.sh`
 
 ---
 
-## API — Endpoints principais
+## 📝 Notas de Desenvolvimento
 
-### Autenticação
-
-| Método | Rota                    | Descrição                          |
-|--------|-------------------------|------------------------------------|
-| POST   | `/auth/register`        | Criar conta                        |
-| POST   | `/auth/login`           | Login — retorna JWT                |
-| GET    | `/auth/me`              | Dados do usuário logado            |
-| POST   | `/auth/esqueci-senha`   | Envia e-mail com token de reset    |
-| POST   | `/auth/resetar-senha`   | Redefine senha via token           |
-
-### Chats
-
-| Método | Rota                    | Descrição                          |
-|--------|-------------------------|------------------------------------|
-| POST   | `/api/chat`             | Criar novo chat                    |
-| GET    | `/api/chats`            | Listar chats do usuário            |
-| GET    | `/api/chat/{id}`        | Buscar chat com mensagens          |
-| PATCH  | `/api/chat/{id}`        | Renomear chat                      |
-| DELETE | `/api/chat/{id}`        | Deletar chat e mensagens           |
-
-### Pergunta
-
-| Método | Rota                    | Descrição                                      |
-|--------|-------------------------|------------------------------------------------|
-| POST   | `/api/pergunta`         | Processa pergunta com contexto do chat         |
-| GET    | `/api/autocomplete`     | Sugestão de cursos pelo termo buscado          |
-
-**Exemplo — POST `/api/pergunta`:**
-
-```json
-// Request
-{ "pergunta": "Qual curso teve mais evasões em 2023?", "chat_id": 42 }
-
-// Response
-{
-  "pergunta": "Qual curso teve mais evasões em 2023?",
-  "resposta": "No 1º semestre de 2023, o curso com maior número de evasões foi...",
-  "sql": "SELECT NOME_CURSO, TOTAL_EVASOES FROM BEEIA.Cursos_Totais_IA WHERE ..."
-}
-```
-
-> Todas as rotas de chat e pergunta exigem `Authorization: Bearer <token>`.
+Para desenvolvedores, consulte os arquivos de diretrizes específicas:
+- `backend/CLAUDE.md`: Padrões de rotas, lógica do LLM e regras de banco.
+- `frontend/CLAUDE.md`: Padrões de componentes, tokens de cor e autenticação.
 
 ---
 
-## Banco de Dados
+## 📄 Licença
 
-### PostgreSQL — dados da aplicação
-
-| Tabela              | Colunas principais                                              |
-|---------------------|-----------------------------------------------------------------|
-| `usuarios`          | id, nome, email, senha_hash, ativo, criado_em                  |
-| `chats`             | id, usuario_id, titulo, criado_em, atualizado_em               |
-| `mensagens`         | id, chat_id, role (user/assistant), conteudo, criado_em        |
-| `tokens_recuperacao`| id, usuario_id, token, usado, expira_em                        |
-
-As tabelas são criadas automaticamente pelo SQLAlchemy ao iniciar o backend.
-
-### IBM DB2 — dados UFSM
-
-Tabela consultada: `BEEIA.Cursos_Totais_IA`
-
-| Coluna                    | Descrição                               |
-|---------------------------|-----------------------------------------|
-| NOME_CURSO                | Nome completo do curso                  |
-| SIGLA_CENTRO              | Centro acadêmico (CAL, CCNE, CCR…)     |
-| ANO                       | Ano letivo (2021–2024)                  |
-| SEMESTRE                  | Semestre (1 ou 2)                       |
-| TOTAL_MATRICULADOS        | Alunos matriculados                     |
-| TOTAL_EVASOES             | Total de evasões                        |
-| TOTAL_CALOUROS            | Total de ingressantes                   |
-| TOTAL_EGRESSOS            | Total de formandos                      |
-| PERCENTUAL_ACERTOS_EVASAO | Taxa de acerto do modelo preditivo      |
-
----
-
-## Como o LLM funciona (sem fine-tuning)
-
-O GPT-4 é acionado em três etapas encadeadas, todas via prompts com o schema e exemplos embutidos:
-
-1. **Interpretação** — extrai filtros da pergunta (curso, ano, semestre, centro) e corrige o nome do curso para o mais próximo da lista oficial de 43 cursos
-2. **Geração de SQL** — com base nos filtros, no schema da tabela e no histórico do chat, gera a query SQL para o DB2
-3. **Formatação** — recebe o resultado bruto e transforma em texto legível em português
-
-O histórico das mensagens anteriores do chat é enviado junto ao prompt da etapa 2, permitindo perguntas de acompanhamento como _"e no semestre anterior?"_ ou _"qual desses tem o maior percentual?"_.
+Este projeto é de uso institucional da **Universidade Federal de Santa Maria (UFSM)**.
