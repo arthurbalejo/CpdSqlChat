@@ -1,9 +1,12 @@
 import os
 import json
+import time
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from dotenv import load_dotenv
+from sqlalchemy.sql import text
 from constants import CURSOS
+from services.database import engine
 
 load_dotenv()
 
@@ -14,34 +17,48 @@ llm = ChatOpenAI(
     model="gpt-4"
 )
 
+_cache_prompts = {"dados": None, "expira": 0}
+
+
+def carregar_prompts() -> dict:
+    global _cache_prompts
+    agora = time.time()
+    if _cache_prompts["dados"] is not None and agora < _cache_prompts["expira"]:
+        return _cache_prompts["dados"]
+    try:
+        with engine.connect() as conn:
+            resultado = conn.execute(
+                text(
+                    "SELECT PROMPT_TRATAMENTO, PROMPT_PERGUNTA, PROMPT_RESPOSTA "
+                    "FROM BEEIA.PROMPTS_INTEGRA FETCH FIRST 1 ROWS ONLY"
+                )
+            )
+            linha = resultado.fetchone()
+            if linha is None:
+                raise ValueError("Tabela BEEIA.PROMPTS_INTEGRA esta vazia")
+            dados = {
+                "PROMPT_TRATAMENTO": linha[0],
+                "PROMPT_PERGUNTA":   linha[1],
+                "PROMPT_RESPOSTA":   linha[2],
+            }
+            _cache_prompts["dados"]  = dados
+            _cache_prompts["expira"] = agora + 60
+            return dados
+    except Exception as e:
+        raise RuntimeError(
+            f"Falha ao carregar prompts de BEEIA.PROMPTS_INTEGRA: {e}"
+        ) from e
+
+
 def interpretar_pergunta(pergunta: str) -> dict:
-    prompt = f"""
-Você recebeu essa pergunta sobre dados universitários da UFSM: "{pergunta}"
-
-Lista completa de cursos válidos:
-{chr(10).join(CURSOS)}
-
-Sua tarefa:
-1. Identifique o curso mencionado e encontre o nome EXATO mais próximo da lista acima
-2. Identifique o ano (2021, 2022, 2023 ou 2024) se mencionado
-3. Identifique o semestre (1 ou 2) se mencionado
-4. Identifique o centro (CAL, CCNE, CCR, CCS, CCSH, CE, CEFD, CS, CT, CTISM, FW, PM, POLI) se mencionado
-5. Reescreva a pergunta de forma clara usando o nome exato do curso
-
-Retorne APENAS um JSON válido sem explicações, sem markdown, sem blocos de código:
-{{
-  "curso": "nome exato do curso da lista ou null",
-  "ano": 2023,
-  "semestre": null,
-  "centro": null,
-  "pergunta_reformulada": "pergunta reescrita com o nome exato do curso"
-}}
-"""
+    prompts = carregar_prompts()
+    cursos  = chr(10).join(CURSOS)
+    prompt  = prompts["PROMPT_TRATAMENTO"].format(pergunta=pergunta, cursos=cursos)
     resultado = call_llm(prompt)
     try:
         return json.loads(resultado)
     except json.JSONDecodeError:
-        # Se o GPT retornar algo inválido, devolve a pergunta original
+        # GPT retornou JSON invalido: devolve estrutura padrao com a pergunta original
         return {
             "curso": None,
             "ano": None,
@@ -52,11 +69,11 @@ Retorne APENAS um JSON válido sem explicações, sem markdown, sem blocos de c�
 
 
 def gerar_sql(pergunta: str, historico: list = None) -> str:
-    interpretacao = interpretar_pergunta(pergunta)
+    interpretacao        = interpretar_pergunta(pergunta)
     pergunta_reformulada = interpretacao.get("pergunta_reformulada", pergunta)
-    curso = interpretacao.get("curso")
+    curso                = interpretacao.get("curso")
 
-    print(f"Interpretação: {interpretacao}")
+    print(f"Interpretacao: {interpretacao}")
 
     contexto_historico = ""
     if historico:
@@ -70,7 +87,6 @@ def gerar_sql(pergunta: str, historico: list = None) -> str:
             + "\n\n"
         )
 
-    # Regra de filtro de curso: igualdade exata quando identificado, LIKE como fallback
     if curso:
         regra_curso = (
             f"- FILTRO DE CURSO OBRIGATÓRIO: o curso foi identificado com precisão como '{curso}'. "
@@ -83,73 +99,22 @@ def gerar_sql(pergunta: str, historico: list = None) -> str:
             "Use LIKE com % dos dois lados: LOWER(NOME_CURSO) LIKE '%termo%'"
         )
 
-    prompt = f"""{contexto_historico}
-Você é um assistente de banco de dados. Com base na pergunta do usuário, gere apenas **uma única consulta SQL** correta e sem erros.
-
-Tabela: BEEIA.Cursos_Totais_IA
-Colunas:
-- NOME_CURSO: nome do curso
-- SIGLA_CENTRO: sigla da unidade de ensino (CAL,CCNE,CCR,CCS,CCSH,CE,CEFD,CS,CT,CTISM,FW,PM,POLI)
-- ANO: ano da análise (2021,2022,2023,2024)
-- SEMESTRE: semestre do ano, valor 1 ou 2
-- TOTAL_CURSOS: número total de cursos da UFSM
-- TOTAL_MATRICULADOS: alunos matriculados no curso
-- TOTAL_EGRESSOS: total de egressos (formados ou abandonos)
-- TOTAL_METODOS: total de algoritmos de ML utilizados
-- TOTAL_ATRIBUTOS: total de variáveis utilizadas na análise
-- TOTAL_EVASOES: total de abandonos
-- TOTAL_ACERTOS: total de evasões previstas corretamente
-- TOTAL_CALOUROS: total de alunos calouros
-- PERCENTUAL_ACERTOS_EVASAO: percentual de acerto da evasão
-- PERCENTUAL_ACERTOS_ANALISE: percentual de acertos da análise
-
-Regras:
-- Retorne APENAS o SQL, sem explicações, sem markdown, sem blocos de código
-- Sempre inclua as colunas ANO e SEMESTRE no SELECT para que a resposta seja completa
-{regra_curso}
-- Para perguntas sobre maior/menor valor, use subconsulta no lugar de ORDER BY + FETCH FIRST, exemplo:
-  SELECT NOME_CURSO, TOTAL_EVASOES FROM BEEIA.Cursos_Totais_IA
-  WHERE SIGLA_CENTRO = '<CENTRO_DA_PERGUNTA>'
-  AND TOTAL_EVASOES = (SELECT MAX(TOTAL_EVASOES) FROM BEEIA.Cursos_Totais_IA WHERE SIGLA_CENTRO = '<CENTRO_DA_PERGUNTA>')
-- Substitua <CENTRO_DA_PERGUNTA> pelo centro mencionado pelo usuário
-- Se não houver centro na pergunta, remova o filtro de SIGLA_CENTRO
-- Se a pergunta for sobre QUAIS cursos existem (listagem), use DISTINCT e NÃO inclua ANO e SEMESTRE
-- Só inclua ANO e SEMESTRE quando a pergunta for sobre evasão, percentuais ou dados temporais
-- Exemplo para listagem: SELECT DISTINCT SIGLA_CENTRO, NOME_CURSO FROM BEEIA.Cursos_Totais_IA ORDER BY SIGLA_CENTRO, NOME_CURSO
-- Use AVG para médias, MAX/MIN para maior/menor
-- Nunca retorne múltiplas queries
-- PERIODO é sinônimo de SEMESTRE
-- IBM DB2 não suporta LIMIT: para limitar linhas use FETCH FIRST X ROWS ONLY
-
-Pergunta original: "{pergunta}"
-Pergunta reformulada: "{pergunta_reformulada}"
-"""
+    prompts = carregar_prompts()
+    prompt  = prompts["PROMPT_PERGUNTA"].format(
+        historico=contexto_historico,
+        regra_curso=regra_curso,
+        pergunta=pergunta,
+        pergunta_reformulada=pergunta_reformulada,
+    )
     return call_llm(prompt)
 
 
 def formatar_resposta(pergunta: str, sql: str, dados: str) -> str:
-    prompt = f"""
-        Você é um assistente que responde perguntas sobre evasão universitária na UFSM.
-
-        Contexto:
-        - A pergunta do usuário foi: "{pergunta}"
-        - Os dados retornados foram:
-        {dados}
-
-        Regras:
-        - Responda de forma clara e objetiva em português
-        - SEMPRE mencione o ano e semestre de cada registro na resposta
-        - Formato para cada item: "No X semestre de ANO, houve Y evasões"
-        - Inclua TODOS os dados retornados na resposta
-        - Se houver mais de 10 registros, use tópicos numerados
-        - Não mencione SQL na resposta
-        - Se não houver dados, diga que não foram encontrados resultados
-        - IMPORTANTE: se os dados contiverem mais de um curso diferente no campo NOME_CURSO,
-          agrupe os registros por curso e apresente cada curso em uma seção separada com
-          seu nome como título. Nunca misture dados de cursos diferentes no mesmo parágrafo.
-        """
-    model = "gpt-3.5-turbo-16k" if len(dados) > 2000 else "gpt-4"
+    prompts = carregar_prompts()
+    prompt  = prompts["PROMPT_RESPOSTA"].format(pergunta=pergunta, dados=dados)
+    model   = "gpt-3.5-turbo-16k" if len(dados) > 2000 else "gpt-4"
     return call_llm(prompt, model=model)
+
 
 def call_llm(prompt: str, model: str = "gpt-4") -> str:
     try:
