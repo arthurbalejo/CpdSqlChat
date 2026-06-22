@@ -17,10 +17,10 @@ export function useTheme() {
 }
 
 function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
-    const stored = (localStorage.getItem("theme") as Theme) || "light";
+    const stored = (localStorage.getItem("theme") as Theme) || "dark";
     setThemeState(stored);
   }, []);
 

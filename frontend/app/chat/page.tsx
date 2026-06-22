@@ -568,7 +568,7 @@ export default function Chat() {
               onChange={(e) => setPerguntaInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={carregando || !chatAtivo}
-              className="h-10 flex-1 rounded-xl bg-background dark:bg-[oklch(0.22_0.06_250)] border-navy/25 dark:border-white/15 text-navy dark:text-white placeholder:text-navy/40 dark:placeholder:text-white/40 focus-visible:ring-orange/50 focus-visible:border-orange"
+              className="h-10 flex-1 rounded-xl bg-white dark:bg-[oklch(0.22_0.06_250)] border-navy/25 dark:border-white/15 text-navy dark:text-white placeholder:text-navy/40 dark:placeholder:text-white/40 focus-visible:ring-orange/50 focus-visible:border-orange"
             />
             <Button
               onClick={enviar}

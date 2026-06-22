@@ -27,6 +27,7 @@ services:
     environment:
       # Overrides DATABASE_URL from .env to use the postgres service hostname
       DATABASE_URL: postgresql://beeai_user:suasenha123@postgres:5432/beeai
+      FRONTEND_URL: http://localhost:3000
     volumes:
       - ./backend:/app
       - /app/__pycache__

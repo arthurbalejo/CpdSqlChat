@@ -62,7 +62,7 @@ Definido em `app/globals.css` como custom properties CSS consumidas pelo Tailwin
 ### Background
 | Modo  | Valor                   |
 |-------|-------------------------|
-| Light | `oklch(0.87 0.04 245)` — azul claro (não branco neutro) |
+| Light | `oklch(1 0 0)` — branco neutro |
 | Dark  | `oklch(0.14 0.04 250)` — azul escuro profundo |
 
 ### Classes mais usadas no código

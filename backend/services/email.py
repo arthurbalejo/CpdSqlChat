@@ -8,9 +8,10 @@ load_dotenv()
 
 MAIL_EMAIL = os.getenv("MAIL_EMAIL")
 MAIL_SENHA = os.getenv("MAIL_SENHA")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 async def enviar_email_recuperacao(destinatario: str, token: str):
-    link = f"http://localhost:3000/resetar-senha?token={token}"
+    link = f"{FRONTEND_URL}/resetar-senha?token={token}"
 
     mensagem = MIMEMultipart("alternative")
     mensagem["Subject"] = "AcademIA — Recuperação de senha"
