@@ -4,7 +4,7 @@
 - **FastAPI** + **Uvicorn** (porta 5000)
 - **SQLAlchemy 2** com dois engines separados:
   - `services/database_pg.py` → PostgreSQL (usuários, chats, mensagens)
-  - `services/database.py` → IBM DB2 (tabela de dados de evasão, read-only)
+  - `services/database.py` → IBM DB2 (dois schemas: `BEEIA.Cursos_Totais_IA` para dados de evasão; `ACBALEJO.PROMPTS_INTEGRA` para configuração dos prompts LLM)
 - **LangChain + OpenAI** (`gpt-4` / `gpt-3.5-turbo-16k`)
 - **python-jose** (JWT HS256), **passlib/bcrypt**, **aiosmtplib**
 

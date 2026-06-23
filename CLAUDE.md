@@ -150,6 +150,15 @@ Tabela legada — mantida mas não usada ativamente (o fluxo atual usa `chats`/`
 | PERCENTUAL_ACERTOS_EVASAO   | % de acerto da evasão                      |
 | PERCENTUAL_ACERTOS_ANALISE  | % de acerto da análise                     |
 
+### IBM DB2 — `ACBALEJO.PROMPTS_INTEGRA` (read-only, configuração dos prompts LLM)
+Carregada em cache de 60s por `services/llm.carregar_prompts()`.
+
+| Coluna            | Descrição                                                                 |
+|-------------------|---------------------------------------------------------------------------|
+| PROMPT_TRATAMENTO | Prompt para `interpretar_pergunta()` — identifica curso, ano, semestre, centro |
+| PROMPT_PERGUNTA   | Prompt para `gerar_sql()` — gera a query SQL para o DB2                   |
+| PROMPT_RESPOSTA   | Prompt para `formatar_resposta()` — formata os dados em português         |
+
 ---
 
 ## 5. Rotas da API

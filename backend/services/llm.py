@@ -30,12 +30,12 @@ def carregar_prompts() -> dict:
             resultado = conn.execute(
                 text(
                     "SELECT PROMPT_TRATAMENTO, PROMPT_PERGUNTA, PROMPT_RESPOSTA "
-                    "FROM BEEIA.PROMPTS_INTEGRA FETCH FIRST 1 ROWS ONLY"
+                    "FROM ACBALEJO.PROMPTS_INTEGRA FETCH FIRST 1 ROWS ONLY"
                 )
             )
             linha = resultado.fetchone()
             if linha is None:
-                raise ValueError("Tabela BEEIA.PROMPTS_INTEGRA esta vazia")
+                raise ValueError("Tabela ACBALEJO.PROMPTS_INTEGRA esta vazia")
             dados = {
                 "PROMPT_TRATAMENTO": linha[0],
                 "PROMPT_PERGUNTA":   linha[1],
