@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.autocomplete import router as autocomplete_router
@@ -7,9 +8,12 @@ from routes.chat import router as chat_router
 
 app = FastAPI(title="BEE IA API")
 
+_cors_origins = os.getenv("CORS_ORIGINS", "*")
+cors_origins = _cors_origins.split(",") if _cors_origins != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

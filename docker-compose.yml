@@ -5,9 +5,7 @@ services:
     environment:
       POSTGRES_DB: beeai
       POSTGRES_USER: beeai_user
-      POSTGRES_PASSWORD: suasenha123
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-beeai_dev_local}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
@@ -25,13 +23,9 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # Overrides DATABASE_URL from .env to use the postgres service hostname
-      DATABASE_URL: postgresql://beeai_user:suasenha123@postgres:5432/beeai
-      FRONTEND_URL: http://localhost:3000
-    volumes:
-      - ./backend:/app
-      - /app/__pycache__
-    command: uvicorn main:app --host 0.0.0.0 --port 5000
+      DATABASE_URL: postgresql://beeai_user:${POSTGRES_PASSWORD:-beeai_dev_local}@postgres:5432/beeai
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,8 +37,20 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:5000
+      BACKEND_INTERNAL_URL: http://backend:5000
     depends_on:
+      - backend
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: beeai_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
       - backend
     restart: always
 

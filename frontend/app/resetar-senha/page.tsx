@@ -34,7 +34,7 @@ function ResetarSenhaForm() {
 
     setCarregando(true);
     try {
-      const res = await fetch("http://localhost:5000/auth/resetar-senha", {
+      const res = await fetch(`/auth/resetar-senha`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, nova_senha: novaSenha }),

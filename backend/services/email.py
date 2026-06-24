@@ -8,7 +8,10 @@ load_dotenv()
 
 MAIL_EMAIL = os.getenv("MAIL_EMAIL")
 MAIL_SENHA = os.getenv("MAIL_SENHA")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_URL") or "http://localhost:3000"
+if not os.getenv("FRONTEND_URL"):
+    import warnings
+    warnings.warn("FRONTEND_URL não definida — links de email apontarão para localhost", stacklevel=1)
 
 async def enviar_email_recuperacao(destinatario: str, token: str):
     link = f"{FRONTEND_URL}/resetar-senha?token={token}"

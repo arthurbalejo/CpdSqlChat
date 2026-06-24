@@ -18,7 +18,7 @@ export default function EsqueciSenha() {
     setErro("");
     setCarregando(true);
     try {
-      await fetch(`http://localhost:5000/auth/esqueci-senha?email=${encodeURIComponent(email)}`, {
+      await fetch(`/auth/esqueci-senha?email=${encodeURIComponent(email)}`, {
         method: "POST",
       });
       setEnviado(true);
